@@ -1,9 +1,10 @@
 import boto3
+import os
 
 client = boto3.client("ec2")
 
-CLIENT_VPN_ENDPOINT_ID = 'cvpn-endpoint-0cdc5c4b33d519957'
-SUBNET_ID = 'subnet-ffebedb6'
+CLIENT_VPN_ENDPOINT_ID = ''
+SUBNET_ID = ''
 
 def is_associated(): #This function returns True if the endpoint is associated with the target network, vice versa.
     response = client.describe_client_vpn_endpoints(
@@ -57,8 +58,13 @@ def disassociate_target_network() -> None:
         raise Exception("Unexpected status detected after disassociation : {}".format(response['Status']['Code']))
 
 def main():
+
     try:
-       pass
+        CLIENT_VPN_ENDPOINT_ID = os.environ['ENDPOINT_ID']
+        SUBNET_ID = os.environ['SUBNET_ID']
+        # A KeyError will be raised if any of these values does not exist.
+
+        pass
     except Exception as e:
         print("Errors occured.")
         print(e)
