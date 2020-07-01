@@ -23,7 +23,7 @@ def is_associated(): #This function returns True if the endpoint is associated w
         return False
     elif state == "available": #When the subnet is associated 
         return True 
-    else: #the possibility of an endpoint neither assiciated or available.(Unexpected state)
+    else: #the possibility of an endpoint neither assiciated nor available.(Unexpected state)
         raise Exception("An unexpected state detected.")
         
 def associate_target_network() -> None:
