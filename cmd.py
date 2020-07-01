@@ -6,21 +6,25 @@ client = boto3.client("ec2")
 CLIENT_VPN_ENDPOINT_ID = ''
 SUBNET_ID = ''
 
-def is_associated(): #This function returns True if the endpoint is associated with the target network, vice versa.
+def get_association_state():
     response = client.describe_client_vpn_endpoints(
         ClientVpnEndpointIds = [
             CLIENT_VPN_ENDPOINT_ID,
         ]
     )
     if len(response['ClientVpnEndpoints']) > 0:
-        if response['ClientVpnEndpoints'][0]['Status']['Code'] == "pending-associate": #When the subnet is NOT associated
-            return False
-        elif response['ClientVpnEndpoints'][0]['Status']['Code'] == "available": #When the subnet is associated 
-            return True 
-        else: #the possibility of an endpoint neither assiciated or available.(Unexpected state)
-            raise Exception("An unexpected state detected.")
+        return response['ClientVpnEndpoints'][0]['Status']['Code']
     else:
         raise Exception("No existing client vpn endpoint found.")
+
+def is_associated(): #This function returns True if the endpoint is associated with the target network, vice versa.
+    state = get_association_state()
+    if state == "pending-associate": #When the subnet is NOT associated
+        return False
+    elif state == "available": #When the subnet is associated 
+        return True 
+    else: #the possibility of an endpoint neither assiciated or available.(Unexpected state)
+        raise Exception("An unexpected state detected.")
         
 def associate_target_network() -> None:
     response = client.associate_client_vpn_target_network(
