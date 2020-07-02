@@ -5,6 +5,10 @@ import sys
 
 client = boto3.client("ec2")
 
+'''
+So please leave these values below blank if you want to specify the ids with system environment variables. 
+Otherwise, the values specified here would override the ones as environment variables.
+'''
 CLIENT_VPN_ENDPOINT_ID = ''
 SUBNET_ID = ''
 HELP_SCRIPT = '''
@@ -92,8 +96,10 @@ def disassociate_target_network() -> None:
 
 def main():
     try:
-        CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
-        SUBNET_ID = os.environ['SUBNET_ID']
+        if not CLIENT_VPN_ENDPOINT_ID == '':
+            CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
+        if not SUBNET_ID == '':
+            SUBNET_ID = os.environ['SUBNET_ID']
         # A KeyError will be raised if any of these values does not exist.
         if len(sys.argv) > 1:
             commandInput = sys.argv[1]
