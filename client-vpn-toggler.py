@@ -9,8 +9,8 @@ client = boto3.client("ec2")
 So please leave these values below blank if you want to specify the ids with system environment variables. 
 Otherwise, the values specified here would override the ones as environment variables.
 '''
-CLIENT_VPN_ENDPOINT_ID = ''
-SUBNET_ID = ''
+CLIENT_VPN_ENDPOINT_ID = ""
+SUBNET_ID = ""
 HELP_SCRIPT = '''
 Usage: ./client-vpn-toggler command
 The followings are the available commands of this utility and the descriptions for them:
@@ -95,10 +95,12 @@ def disassociate_target_network() -> None:
 
 
 def main():
+    global CLIENT_VPN_ENDPOINT_ID
+    global SUBNET_ID
     try:
-        if not CLIENT_VPN_ENDPOINT_ID == '':
+        if not CLIENT_VPN_ENDPOINT_ID:
             CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
-        if not SUBNET_ID == '':
+        if not SUBNET_ID:
             SUBNET_ID = os.environ['SUBNET_ID']
         # A KeyError will be raised if any of these values does not exist.
         if len(sys.argv) > 1:
