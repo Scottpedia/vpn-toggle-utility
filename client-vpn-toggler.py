@@ -7,7 +7,7 @@ client = boto3.client("ec2")
 
 '''
 So please leave these values below blank if you want to specify the ids with system environment variables. 
-Otherwise, the values specified here would override the ones as environment variables.
+Otherwise, the values specified here would override the environment variables.
 '''
 CLIENT_VPN_ENDPOINT_ID = ""
 SUBNET_ID = ""
