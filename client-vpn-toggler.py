@@ -7,9 +7,10 @@ client = boto3.client("ec2")
 CLIENT_VPN_ENDPOINT_ID = ''
 SUBNET_ID = ''
 
+
 def get_association_state():
     response = client.describe_client_vpn_endpoints(
-        ClientVpnEndpointIds = [
+        ClientVpnEndpointIds=[
             CLIENT_VPN_ENDPOINT_ID,
         ]
     )
@@ -18,49 +19,62 @@ def get_association_state():
     else:
         raise Exception("No existing client vpn endpoint found.")
 
-def is_associated(): #This function returns True if the endpoint is associated with the target network, vice versa.
+
+# This function returns True if the endpoint is associated with the target network, vice versa.
+def is_associated():
     state = get_association_state()
-    if state == "pending-associate": #When the subnet is NOT associated
+    if state == "pending-associate":  # When the subnet is NOT associated
         return False
-    elif state == "available": #When the subnet is associated 
-        return True 
-    else: #the possibility of an endpoint neither assiciated nor available.(Unexpected state)
+    elif state == "available":  # When the subnet is associated
+        return True
+    # the possibility of an endpoint neither assiciated nor available.(Unexpected state)
+    else:
         raise Exception("An unexpected state detected.")
-        
+
+
 def associate_target_network() -> None:
     response = client.associate_client_vpn_target_network(
-        ClientVpnEndpointId = CLIENT_VPN_ENDPOINT_ID,
-        SubnetId = SUBNET_ID,
+        ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID,
+        SubnetId=SUBNET_ID,
     )
     if response["Status"]["Code"] != 'associating':
-        raise Exception("Unexpected association state detected : {}".format(response['Status']['Code']))
+        raise Exception("Unexpected association state detected : {}".format(
+            response['Status']['Code']))
+
 
 def create_internet_routing_rule() -> None:
     response = client.create_client_vpn_route(
-        ClientVpnEndpointId = CLIENT_VPN_ENDPOINT_ID,
-        DestinationCidrBlock = '0.0.0.0/0', #The CIDR block that allows the traffic in and out of the public internet.
-        TargetVpcSubnetId = SUBNET_ID,
+        ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID,
+        # The CIDR block that allows the traffic in and out of the public internet.
+        DestinationCidrBlock='0.0.0.0/0',
+        TargetVpcSubnetId=SUBNET_ID,
     )
     if response['Status']['Code'] != 'creating':
-        raise Exception("Unexpected state detected after creating the route : {}".format(response['Status']['Code']))
+        raise Exception("Unexpected state detected after creating the route : {}".format(
+            response['Status']['Code']))
+
 
 def get_current_association_id():
     response = client.describe_client_vpn_target_networks(
-        ClientVpnEndpointId = CLIENT_VPN_ENDPOINT_ID
+        ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID
     )
     if len(response['ClientVpnTargetNetworks']) > 0:
         return response['ClientVpnTargetNetworks'][0]['AssociationId']
     else:
-        raise Exception("No association ID found, probably there is no terget network associated right now.")
+        raise Exception(
+            "No association ID found, probably there is no terget network associated right now.")
+
 
 def disassociate_target_network() -> None:
     associationId = get_current_association_id()
     response = client.response = client.disassociate_client_vpn_target_network(
-        ClientVpnEndpointId = CLIENT_VPN_ENDPOINT_ID,
-        AssociationId = associationId,
+        ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID,
+        AssociationId=associationId,
     )
     if response['Status']['Code'] != 'disassociating':
-        raise Exception("Unexpected status detected after disassociation : {}".format(response['Status']['Code']))
+        raise Exception("Unexpected status detected after disassociation : {}".format(
+            response['Status']['Code']))
+
 
 def main():
 
@@ -73,6 +87,7 @@ def main():
     except Exception as e:
         print("Errors occured.")
         print(e)
+
 
 if __name__ == "__main__":
     main()
