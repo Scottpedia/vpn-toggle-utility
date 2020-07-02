@@ -93,7 +93,7 @@ def disassociate_target_network() -> None:
 
 def main():
     try:
-        CLIENT_VPN_ENDPOINT_ID = os.environ['ENDPOINT_ID']
+        CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
         SUBNET_ID = os.environ['SUBNET_ID']
         # A KeyError will be raised if any of these values does not exist.
         if len(sys.argv) > 1:
