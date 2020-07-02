@@ -8,7 +8,6 @@ client = boto3.client("ec2")
 CLIENT_VPN_ENDPOINT_ID = ''
 SUBNET_ID = ''
 HELP_SCRIPT = '''
-
 Usage: ./client-vpn-toggler command
 The followings are the available commands of this utility and the descriptions for them:
     
@@ -125,6 +124,8 @@ def main():
         else:
             raise Exception("No command specified.\n{}".format(HELP_SCRIPT))
         pass
+    except KeyError:
+        print("Please specify the IDs of your resources.\n{}".format(HELP_SCRIPT))
     except Exception as e:
         print("Errors occured.")
         print(e)
