@@ -98,12 +98,12 @@ def disassociate_target_network() -> None:
 def main():
     global CLIENT_VPN_ENDPOINT_ID
     global SUBNET_ID
-    try:
+    try:        
+        # A KeyError will be raised if any of these values does not exist.
         if not CLIENT_VPN_ENDPOINT_ID:
             CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
         if not SUBNET_ID:
             SUBNET_ID = os.environ['SUBNET_ID']
-        # A KeyError will be raised if any of these values does not exist.
         if len(sys.argv) > 1:  # To see if the command the present.
             commandInput = sys.argv[1]
             if commandInput == "get-status":
