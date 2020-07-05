@@ -75,19 +75,3 @@ def disassociate_target_network() -> None:
         raise Exception("Unexpected status detected after disassociation : {}".format(
             response['Status']['Code']))
 
-
-def main():
-
-    try:
-        CLIENT_VPN_ENDPOINT_ID = os.environ['ENDPOINT_ID']
-        SUBNET_ID = os.environ['SUBNET_ID']
-        # A KeyError will be raised if any of these values does not exist.
-
-        pass
-    except Exception as e:
-        print("Errors occured.")
-        print(e)
-
-
-if __name__ == "__main__":
-    main()
