@@ -4,8 +4,8 @@ import os
 
 client = boto3.client("ec2")
 
-CLIENT_VPN_ENDPOINT_ID = ''
-SUBNET_ID = ''
+CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
+SUBNET_ID = os.environ['SUBNET_ID']
 
 
 def get_association_state():
