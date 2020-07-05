@@ -106,7 +106,7 @@ def main():
             CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
         if not SUBNET_ID:
             SUBNET_ID = os.environ['SUBNET_ID']
-        if len(sys.argv) > 1:  # To see if the command the present.
+        if len(sys.argv) > 1:  # To see if the command is present.
             commandInput = sys.argv[1]
             if commandInput == "get-status":
                 print("Getting the association state of the client vpn endpoint : \n{}".format(
