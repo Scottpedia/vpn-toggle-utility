@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+import json
 import boto3
 import os
 
@@ -75,3 +75,35 @@ def disassociate_target_network() -> None:
         raise Exception("Unexpected status detected after disassociation : {}".format(
             response['Status']['Code']))
 
+def lambda_handler(event, context):
+    # TODO implement
+    path = event['resource-path']
+    print(f"Event received as {event}")
+    if path == "/":
+        print("Getting the association state...")
+        state = get_association_state()
+        print("Done. State:\'{}\'".format(state))
+        print("Returning the State to the client...")
+        return {
+            'status': 200,
+            'association state': state
+        }
+    elif path == "/turn-on":
+        print("Associating the target subnet...")
+        associate_target_network()
+        print('Done.')
+        print("Creating the new route...")
+        create_internet_routing_rule()
+        print("Done.")
+        return {
+            "status" : 200
+        }
+    elif path == "/turn-off":
+        print("Disassociating the target subnet...")
+        disassociate_target_network()
+        print('Done')
+        return {
+            'status':200
+        }
+    else:
+        raise Exception("No such path{} found".format(path))
