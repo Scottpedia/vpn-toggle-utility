@@ -118,6 +118,11 @@ def main():
                 print("... ... ...")
                 associate_target_network()
                 print("Done.")
+            elif commandInput == "create-new-route":
+                print("Creating new route(0.0.0.0/0) for the endpoint.")
+                print("... ... ...")
+                create_internet_routing_rule()
+                print("Done.")
             elif commandInput == "disassociate":
                 print(
                     f"Disassociating the target subnet({SUBNET_ID})\nfrom the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID}).")
