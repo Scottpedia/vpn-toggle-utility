@@ -23,6 +23,7 @@ The followings are the available commands of this utility and the descriptions f
 Please note that the IDs for both client vpn enpoint and the target subnet are specified by defining the environment variables shown below:
     CLIENT_VPN_ENDPOINT_ID  
     SUBNET_ID
+You can also specify the IDs directly in the script file by defining the variables above. This is especially useful if you want to use the script with the same resource repeatedly.
 '''
 
 
