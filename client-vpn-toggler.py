@@ -129,6 +129,14 @@ def main():
                 print("... ... ...")
                 disassociate_target_network()
                 print("Done.")
+            # Combine two commands into one to make the process simpler.
+            elif commandInput == "turn-on":
+                print(f"Associating the target subnet({SUBNET_ID}) and creating the new route(0.0.0.0/0).")
+                print("... ... ...")
+                associate_target_network()
+                print("... ... ...")
+                create_internet_routing_rule()
+                print("Done.")
             elif commandInput == "help":
                 print(HELP_SCRIPT)
             else:
