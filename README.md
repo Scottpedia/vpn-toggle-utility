@@ -1,7 +1,23 @@
 # vpn-toggle-utility
-The python scripts used to basically turn on and off the client vpn service on aws.
+
+This branch of the repo is dedicated to a python script that deploys a ready-to-go client VPN endpoint on AWS, and also functions as a CLI to manage the endpoint. 
 
 ----------------------------------------------
+
+# Requirements
+
+- AWS CLI(boto3)
+- python3
+- easy-rsa
+
+# Currently Proposed Workflow
+
+1. Generating server-side and client-side credentials and upload them to ACM(AWS Certificate Manager) with AWS SDK.
+1. Creating the Client VPN Components with AWS Cloudformation with the existing template.
+1. Download the Client Connection Information.(.ovpn)
+1. Insert the key and certificate into the  `.ovpn` file.
+1. Save the setup information for CLI Commands.
+1. Cleanup
 
 ```
 Usage: ./client-vpn-toggler command
