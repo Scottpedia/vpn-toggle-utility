@@ -13,7 +13,7 @@ This branch of the repo is dedicated to a python script that deploys a ready-to-
 # Currently Proposed Workflow
 
 1. Generate server-side and client-side credentials and upload them to ACM(AWS Certificate Manager) with AWS SDK.
-1. Createthe Client VPN Components with AWS Cloudformation with the existing template.
+1. Create the Client VPN Components with AWS Cloudformation with the existing template.
 1. Download the aws-generated private key.
 1. Download the Client Connection Information.(.ovpn)
 1. Insert the key and certificate into the  `.ovpn` file.

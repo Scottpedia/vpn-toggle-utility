@@ -156,4 +156,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if ACTION is 1: #setup the vpn
+        generate_credentials()
+        download_cloudformation_template()
+        deploy_cloudformation_template() # save the aws-generated private keys at the same time.
+        download_connection_profile()
+        modify_and_save_connection_profile() # Insert the generated credential into the .ovpn file.
+        save_the_setup_results()
+    elif ACTION is 2: #manage the vpn
+        
