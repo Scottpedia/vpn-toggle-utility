@@ -12,20 +12,26 @@ Otherwise, the values specified here would override the environment variables.
 CLIENT_VPN_ENDPOINT_ID = ""
 SUBNET_ID = ""
 HELP_SCRIPT = '''
-Usage: ./client-vpn-toggler command
-The followings are the available commands of this utility and the descriptions for them:
-    
-      get-status : Get the current association state of the client vpn endpoint. 
-       associate : Associate the specified client vpn endpoint with the target subnet.
-create-new-route : Create the additional route for the specified endpoint to allow the access to the Inernet.
-    disassociate : Disassociate the target subnet from the client vpn endpoint.
-         turn-on : The combination of two commands(associate & create-new-route) to quickly set up the endpoint.
-            help : Display this help message.
+Usage: ./client-vpn-manager [command] -f [the_config_file]
+The python script to deploy and manage the vpn service based on AWS Client VPN Endpoints.
 
-Please note that the IDs for both client vpn enpoint and the target subnet are specified by defining the environment variables shown below:
-    CLIENT_VPN_ENDPOINT_ID  
-    SUBNET_ID
-You can also specify the IDs directly in the script file by defining the variables above. This is especially useful if you want to use the script with the same resource repeatedly.
+NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS SCRIPT.
+      THE SCRIPT WILL NOT RUN WITHOUT AN AWS ACCOUNT SETUP WITH THE CLI.
+
+    Please run the script without any options or commands to setup a new vpn service. 
+    You will be asked of the AWS Region in which you want to deploy your VPN Endpoint.
+
+    To manage the existing VPN Endpoints, please use the following commands:
+    status  :   Output the current status of the specified VPN Endpoint.
+    on      :   Turn on the VPN
+    off     :   Turn off the VPN
+    toggle  :   Toggle the VPN
+
+    -f [Filename] (Optional)
+    You can use the optional -f flag to specify the file which contains the profile of a specific VPN deployment.
+    Thus you can have multiple deployments active at the same time, and manage each of them with its profile.
+    If the file is not speficied, the program will look for one under the current working directory.
+
 '''
 
 
