@@ -5,8 +5,10 @@ import sys
 import traceback
 import string
 import random
+import subprocess
 
-client = boto3.client("ec2")
+client_ec2 = None
+client_acm = None
 
 '''
 So please leave these values below blank if you want to specify the ids with system environment variables.
@@ -42,7 +44,7 @@ NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS S
 
 
 def get_association_state():
-    response = client.describe_client_vpn_endpoints(
+    response = client_ec2.describe_client_vpn_endpoints(
         ClientVpnEndpointIds=[
             CLIENT_VPN_ENDPOINT_ID,
         ]
@@ -66,7 +68,7 @@ def is_associated():
 
 
 def associate_target_network() -> None:
-    response = client.associate_client_vpn_target_network(
+    response = client_ec2.associate_client_vpn_target_network(
         ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID,
         SubnetId=SUBNET_ID,
     )
@@ -76,7 +78,7 @@ def associate_target_network() -> None:
 
 
 def create_internet_routing_rule() -> None:
-    response = client.create_client_vpn_route(
+    response = client_ec2.create_client_vpn_route(
         ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID,
         # The CIDR block that allows the traffic in and out of the public internet.
         DestinationCidrBlock='0.0.0.0/0',
@@ -88,7 +90,7 @@ def create_internet_routing_rule() -> None:
 
 
 def get_current_association_id():
-    response = client.describe_client_vpn_target_networks(
+    response = client_ec2.describe_client_vpn_target_networks(
         ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID
     )
     if len(response['ClientVpnTargetNetworks']) > 0:
@@ -100,7 +102,7 @@ def get_current_association_id():
 
 def disassociate_target_network() -> None:
     associationId = get_current_association_id()
-    response = client.response = client.disassociate_client_vpn_target_network(
+    response = client_ec2.response = client_ec2.disassociate_client_vpn_target_network(
         ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID,
         AssociationId=associationId,
     )
@@ -158,6 +160,7 @@ def manage():
 
 
 def get_user_settings():
+    # The function gets the required deployment settings from the user.
     global USER_SETTINGS
     USER_SETTINGS = {
         'friendlyName': '',
@@ -256,15 +259,77 @@ def get_user_settings():
 def generate_credentials():
     # This function first clones https://github.com/openvpn/easy-rsa.git and generates certificates for both server and clients.
     # And saves it under the current directory.
+    # After that, it uploads the credentials to ACM.
+    print("Generating credentials...")
+    input("In the process, you will be prompted to enter the DN for your CA. You can just leave it blank and press enter.\nPlease type enter to confirm > ")
     commandsToRun = [
-        'cd '
-        'git clone https://github.com/openvpn/easy-rsa.git',
-        'cd easy-rsa/easyrsa3',
-        './easyrsa init-pki',
-        './easyrsa build-ca nopass',
-        './easyrsa build-server-full server nopass',
-        './easyrsa build-client-full client1.domain.tld nopass'
+        'git clone https://github.com/openvpn/easy-rsa.git .easy-rsa-{}'.format(
+            USER_SETTINGS['friendlyName']),
+        '.easy-rsa-{}/easyrsa3/easyrsa init-pki'.format(
+            USER_SETTINGS['friendlyName']),
+        '.easy-rsa-{}/easyrsa3/easyrsa build-ca nopass'.format(
+            USER_SETTINGS['friendlyName']),
+        '.easy-rsa-{}/easyrsa3/easyrsa build-server-full server nopass'.format(
+            USER_SETTINGS['friendlyName']),
+        '.easy-rsa-{}/easyrsa3/easyrsa build-client-full {}.domain.tld nopass'.format(
+            USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
+        'mkdir {}'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/ca.crt ./{}'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/issued/server.crt ./{}'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/private/server.key ./{}'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/issued/{}.domain.tld.crt ./{}'.format(
+            USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
+        'cp pki/private/{}.domain.tld.key ./{}'.format(
+            USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
+        'rm -rf .easy-rsa-{}'.format(USER_SETTINGS['friendlyName']),
+        'rm -rf pki'
     ]
+    for command in commandsToRun:
+        sp = subprocess.run(command.split(' '), stdout=sys.stdout, check=True)
+    else:
+        print("Done.\n")
+
+    # pre-load the certificates into the memory.
+    print("Retrieving the certificates...")
+    CA_CERT = open(
+        f"./{USER_SETTINGS['friendlyName']}/ca.crt", "r").read().encode('UTF-8')
+    SERVER_CERT = open(
+        f"./{USER_SETTINGS['friendlyName']}/server.crt", "r").read().encode('UTF-8')
+    SERVER_KEY = open(
+        f"./{USER_SETTINGS['friendlyName']}/server.key", "r").read().encode('UTF-8')
+    CLIENT_CERT = open(
+        f"./{USER_SETTINGS['friendlyName']}/{USER_SETTINGS['friendlyName']}.domain.tld.crt", "r").read().encode('UTF-8')
+    CLIENT_KEY = open(
+        f"./{USER_SETTINGS['friendlyName']}/{USER_SETTINGS['friendlyName']}.domain.tld.key", "r").read().encode('UTF-8')
+    print("Done.\n")
+
+    # Upload the certificates.
+    # Import Server Certificate
+    print("Uploading the certificates...")
+    client_acm.import_certificate(
+        Certificate=SERVER_CERT,
+        PrivateKey=SERVER_KEY,
+        CertificateChain=CA_CERT,
+        Tags=[
+            {
+                "Key": "deploymentFriendlyName",
+                "Value": USER_SETTINGS['friendlyName']
+            }
+        ]
+    )
+    # Import Client Certificate
+    client_acm.import_certificate(
+        Certificate=CLIENT_CERT,
+        PrivateKey=CLIENT_KEY,
+        CertificateChain=CA_CERT,
+        Tags=[
+            {
+                "Key": "deploymentFriendlyName",
+                "Value": USER_SETTINGS['friendlyName']
+            }
+        ]
+    )
+    print("Done.\n")
 
 # def download_cloudformation_template():
 
@@ -278,7 +343,6 @@ def generate_credentials():
 
 
 # *** THE DEPLOYMENT CODE SECTION ENDS ***
-
 if __name__ == "__main__":
     if len(sys.argv) > 1:  # To see if the command is present.
         try:
@@ -289,6 +353,8 @@ if __name__ == "__main__":
             traceback.print_exc()
     else:  # manage the vpn when there is no commands or options.
         print("No commands or options detected in the command line. Let's setup a brand-new VPN service!")
+        input("Please note that this program will create several temporary & non-temporary files and directories under the current working direcory. \
+            Be sure that you have the proper permission to write to the CWD and it is okay for such purposes!\nPlease press any key to proceed. > ")
         # Before we initiate the deployment sequence, we need to know the following parameters:
         # - the AWS region where the endpoint will be created. (no Default, mandatory)
         # - the friendly name of this vpn service. (Default: timestampt/UUID)
@@ -296,6 +362,10 @@ if __name__ == "__main__":
         # The user will be prompted to speficy these parameters. The job is done within the following function:
         get_user_settings()
         try:
+            client_ec2 = boto3.client(
+                "ec2", region_name=USER_SETTINGS['region'])
+            client_acm = boto3.client(
+                "acm", region_name=USER_SETTINGS['region'])
             generate_credentials()
             # download_cloudformation_template()
             # save the aws-generated private keys at the same time.
