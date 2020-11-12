@@ -273,13 +273,13 @@ def generate_credentials():
             USER_SETTINGS['friendlyName']),
         '.easy-rsa-{}/easyrsa3/easyrsa build-client-full {}.domain.tld nopass'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
-        'mkdir {}'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/ca.crt ./{}'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/issued/server.crt ./{}'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/private/server.key ./{}'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/issued/{}.domain.tld.crt ./{}'.format(
+        'mkdir {}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/ca.crt ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/issued/server.crt ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/private/server.key ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/issued/{}.domain.tld.crt ./{}.ovpnsetup'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
-        'cp pki/private/{}.domain.tld.key ./{}'.format(
+        'cp pki/private/{}.domain.tld.key ./{}.ovpnsetup'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'rm -rf .easy-rsa-{}'.format(USER_SETTINGS['friendlyName']),
         'rm -rf pki'
