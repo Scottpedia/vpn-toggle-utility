@@ -2,6 +2,7 @@
 import boto3
 import os
 import sys
+import traceback
 
 client = boto3.client("ec2")
 
@@ -26,6 +27,7 @@ NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS S
     on      :   Turn on the VPN
     off     :   Turn off the VPN
     toggle  :   Toggle the VPN
+   *help    :   Output the help 
 
     -f [Filename] (Optional)
     You can use the optional -f flag to specify the file which contains the profile of a specific VPN deployment.
@@ -118,34 +120,46 @@ def get_status() -> None:
         get_association_state()))
     print("Done.")
 
-def associate() -> None:
-    print(f"Associating the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID})\nwith the target subnet({SUBNET_ID}).")
-    print("... ... ...")
-    associate_target_network()
-    print("Done.")
-
-def create_new_route() -> None:
-    print("Creating new route(0.0.0.0/0) for the endpoint.")
-    print("... ... ...")
-    create_internet_routing_rule()
-    print("Done.")
-
 def disassociate() -> None:
     print(f"Disassociating the target subnet({SUBNET_ID})\nfrom the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID}).")
     print("... ... ...")
     disassociate_target_network()
     print("Done.")
 
-def turn_off() -> None:
-    disassociate()
+def manage():
+    global CLIENT_VPN_ENDPOINT_ID
+    global SUBNET_ID
+    commandInput = sys.argv[1]
+    if commandInput == "status":
+        get_status()
+    elif commandInput == "off":
+        disassociate()
+    # Combine two commands into one to make the process simpler.
+    elif commandInput == "on":
+        turn_on()
+    elif commandInput == "help":
+        print(HELP_SCRIPT)
+    else:
+        raise Exception(
+            f"No such command as \"{commandInput}\" is available. Please check you input and try again.\n{HELP_SCRIPT}")
 
 if __name__ == "__main__":
-    if ACTION is 1: #setup the vpn
-        generate_credentials()
-        download_cloudformation_template()
-        deploy_cloudformation_template() # save the aws-generated private keys at the same time.
-        download_connection_profile()
-        modify_and_save_connection_profile() # Insert the generated credential into the .ovpn file.
-        save_the_setup_results()
-    elif ACTION is 2: #manage the vpn
-        
+    if len(sys.argv) > 1:  # To see if the command is present.
+        try:
+            get_configuration()
+            manage()
+        except Exception as e:
+            print("Errors occured.", file=sys.stderr)
+            traceback.print_exc()
+    else: #manage the vpn when there is no commands or options.
+        print("No commands or options detected in the command line. Let's setup a brand-new VPN service!")
+        try:
+            generate_credentials()
+            download_cloudformation_template()
+            deploy_cloudformation_template() # save the aws-generated private keys at the same time.
+            download_connection_profile()
+            modify_and_save_connection_profile() # Insert the generated credential into the .ovpn file.
+            save_the_setup_results()
+        except Exception as e:
+            print("Errors occured during the deployment process.\n Program Exits.", file=sys.stderr)
+            traceback.print_exc()
