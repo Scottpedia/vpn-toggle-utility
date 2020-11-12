@@ -8,7 +8,7 @@ This branch of the repo is dedicated to a python script that deploys a ready-to-
 
 - AWS CLI(boto3)
 - python3
-- easy-rsa
+- git
 
 # Currently Proposed Workflow
 
