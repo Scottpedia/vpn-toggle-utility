@@ -405,7 +405,7 @@
                     "Ref": "isSplitTunnelled"
                 },
                 "TransportProtocol": {
-                    "Ref": "EndpointTransportProtocol"
+                    "Ref": "udp"
                 },
                 "VpcId": {
                     "Ref": "EC2VPC4E833"
@@ -457,15 +457,6 @@
             ],
             "Default": "false",
             "Description": "If VPN endpoint enables split tunneling. Select \"false\" if you don't know what it is."
-        },
-        "EndpointTransportProtocol": {
-            "Type": "String",
-            "AllowedValues": [
-                "udp",
-                "tcp"
-            ],
-            "Default": "udp",
-            "Description": "The protocol the endpoint uses. Select \"udp\" if you don't know what this is."
         }
     }
 }
