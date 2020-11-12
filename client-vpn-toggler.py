@@ -6,7 +6,7 @@ import sys
 client = boto3.client("ec2")
 
 '''
-So please leave these values below blank if you want to specify the ids with system environment variables. 
+So please leave these values below blank if you want to specify the ids with system environment variables.
 Otherwise, the values specified here would override the environment variables.
 '''
 CLIENT_VPN_ENDPOINT_ID = ""
@@ -18,7 +18,7 @@ The python script to deploy and manage the vpn service based on AWS Client VPN E
 NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS SCRIPT.
       THE SCRIPT WILL NOT RUN WITHOUT AN AWS ACCOUNT SETUP WITH THE CLI.
 
-    Please run the script without any options or commands to setup a new vpn service. 
+    Please run the script without any options or commands to setup a new vpn service.
     You will be asked of the AWS Region in which you want to deploy your VPN Endpoint.
 
     To manage the existing VPN Endpoints, please use the following commands:
@@ -103,63 +103,41 @@ def disassociate_target_network() -> None:
             response['Status']['Code']))
 
 
-def main():
-    global CLIENT_VPN_ENDPOINT_ID
-    global SUBNET_ID
-    try:        
-        # A KeyError will be raised if any of these values does not exist.
-        if not CLIENT_VPN_ENDPOINT_ID:
-            CLIENT_VPN_ENDPOINT_ID = os.environ['CLIENT_VPN_ENDPOINT_ID']
-        if not SUBNET_ID:
-            SUBNET_ID = os.environ['SUBNET_ID']
-        if len(sys.argv) > 1:  # To see if the command is present.
-            commandInput = sys.argv[1]
-            if commandInput == "get-status":
-                print("Getting the association state of the client vpn endpoint : \n{}".format(
-                    CLIENT_VPN_ENDPOINT_ID))
-                print("... ... ...")
-                print("Currently, and state of association is : \n{}".format(
-                    get_association_state()))
-                print("Done.")
-            elif commandInput == "associate":
-                print(
-                    f"Associating the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID})\nwith the target subnet({SUBNET_ID}).")
-                print("... ... ...")
-                associate_target_network()
-                print("Done.")
-            elif commandInput == "create-new-route":
-                print("Creating new route(0.0.0.0/0) for the endpoint.")
-                print("... ... ...")
-                create_internet_routing_rule()
-                print("Done.")
-            elif commandInput == "disassociate":
-                print(
-                    f"Disassociating the target subnet({SUBNET_ID})\nfrom the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID}).")
-                print("... ... ...")
-                disassociate_target_network()
-                print("Done.")
-            # Combine two commands into one to make the process simpler.
-            elif commandInput == "turn-on":
-                print(f"Associating the target subnet({SUBNET_ID}) and creating the new route(0.0.0.0/0).")
-                print("... ... ...")
-                associate_target_network()
-                print("... ... ...")
-                create_internet_routing_rule()
-                print("Done.")
-            elif commandInput == "help":
-                print(HELP_SCRIPT)
-            else:
-                raise Exception(
-                    f"No such command as \"{commandInput}\" is available. Please check you input and try again.\n{HELP_SCRIPT}")
-        else:
-            raise Exception("No command specified.\n{}".format(HELP_SCRIPT))
-        pass
-    except KeyError:
-        print("Please specify the IDs of your resources.\n{}".format(HELP_SCRIPT))
-    except Exception as e:
-        print("Errors occured.")
-        print(e)
+def turn_on() -> None:
+    print(f"Associating the target subnet({SUBNET_ID}) and creating the new route(0.0.0.0/0).")
+    print("... ... ...")
+    associate_target_network()
+    print("... ... ...")
+    create_internet_routing_rule()
+    print("Done.")
 
+def get_status() -> None:
+    print("Getting the association state of the client vpn endpoint : \n{}".format(CLIENT_VPN_ENDPOINT_ID))
+    print("... ... ...")
+    print("Currently, and state of association is : \n{}".format(
+        get_association_state()))
+    print("Done.")
+
+def associate() -> None:
+    print(f"Associating the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID})\nwith the target subnet({SUBNET_ID}).")
+    print("... ... ...")
+    associate_target_network()
+    print("Done.")
+
+def create_new_route() -> None:
+    print("Creating new route(0.0.0.0/0) for the endpoint.")
+    print("... ... ...")
+    create_internet_routing_rule()
+    print("Done.")
+
+def disassociate() -> None:
+    print(f"Disassociating the target subnet({SUBNET_ID})\nfrom the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID}).")
+    print("... ... ...")
+    disassociate_target_network()
+    print("Done.")
+
+def turn_off() -> None:
+    disassociate()
 
 if __name__ == "__main__":
     if ACTION is 1: #setup the vpn
