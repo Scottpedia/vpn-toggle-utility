@@ -19,10 +19,9 @@ The python script to deploy and manage the vpn service based on AWS Client VPN E
 NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS SCRIPT.
       THE SCRIPT WILL NOT RUN WITHOUT AN AWS ACCOUNT SETUP WITH THE CLI.
 
-    Please run the script without any options or commands to setup a new vpn service.
-    You will be asked of the AWS Region in which you want to deploy your VPN Endpoint.
+***TO DEPLOY A NEW VPN SERVICE, please run the script without any command or option.***
 
-    To manage the existing VPN Endpoints, please use the following commands:
+***TO MANAGE AN EXISTING ENDPOINT, please use the following commands:***
     status  :   Output the current status of the specified VPN Endpoint.
     on      :   Turn on the VPN
     off     :   Turn off the VPN
@@ -32,8 +31,7 @@ NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS S
     -f [Filename] (Optional)
     You can use the optional -f flag to specify the file which contains the profile of a specific VPN deployment.
     Thus you can have multiple deployments active at the same time, and manage each of them with its profile.
-    If the file is not speficied, the program will look for one under the current working directory.
-
+    If the file is not speficied, the program will automatically look for one under the current working directory.
 '''
 
 
@@ -106,27 +104,34 @@ def disassociate_target_network() -> None:
 
 
 def turn_on() -> None:
-    print(f"Associating the target subnet({SUBNET_ID}) and creating the new route(0.0.0.0/0).")
+    print(
+        f"Associating the target subnet({SUBNET_ID}) and creating the new route(0.0.0.0/0).")
     print("... ... ...")
     associate_target_network()
     print("... ... ...")
     create_internet_routing_rule()
     print("Done.")
 
+
 def get_status() -> None:
-    print("Getting the association state of the client vpn endpoint : \n{}".format(CLIENT_VPN_ENDPOINT_ID))
+    print("Getting the association state of the client vpn endpoint : \n{}".format(
+        CLIENT_VPN_ENDPOINT_ID))
     print("... ... ...")
     print("Currently, and state of association is : \n{}".format(
         get_association_state()))
     print("Done.")
 
+
 def disassociate() -> None:
-    print(f"Disassociating the target subnet({SUBNET_ID})\nfrom the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID}).")
+    print(
+        f"Disassociating the target subnet({SUBNET_ID})\nfrom the client vpn endpoint({CLIENT_VPN_ENDPOINT_ID}).")
     print("... ... ...")
     disassociate_target_network()
     print("Done.")
 
+
 def manage():
+    # The function is executed when the user wants to manage an existing VPN service.
     global CLIENT_VPN_ENDPOINT_ID
     global SUBNET_ID
     commandInput = sys.argv[1]
@@ -134,7 +139,6 @@ def manage():
         get_status()
     elif commandInput == "off":
         disassociate()
-    # Combine two commands into one to make the process simpler.
     elif commandInput == "on":
         turn_on()
     elif commandInput == "help":
@@ -142,6 +146,7 @@ def manage():
     else:
         raise Exception(
             f"No such command as \"{commandInput}\" is available. Please check you input and try again.\n{HELP_SCRIPT}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:  # To see if the command is present.
@@ -151,15 +156,24 @@ if __name__ == "__main__":
         except Exception as e:
             print("Errors occured.", file=sys.stderr)
             traceback.print_exc()
-    else: #manage the vpn when there is no commands or options.
+    else:  # manage the vpn when there is no commands or options.
         print("No commands or options detected in the command line. Let's setup a brand-new VPN service!")
+        # Before we initiate the deployment sequence, we need to know the following parameters:
+        # - the AWS region where the endpoint will be created. (no Default, mandatory)
+        # - the friendly name of this vpn service. (Default: timestampt/UUID)
+        # - if the vpn service should be split-tunnelled. (Default: non-split-tunnel)
+        # The user will be prompted to speficy these parameters. The job is done within the following function:
+        get_user_setting()
         try:
             generate_credentials()
             download_cloudformation_template()
-            deploy_cloudformation_template() # save the aws-generated private keys at the same time.
+            # save the aws-generated private keys at the same time.
+            deploy_cloudformation_template()
             download_connection_profile()
-            modify_and_save_connection_profile() # Insert the generated credential into the .ovpn file.
+            # Insert the generated credential into the .ovpn file.
+            modify_and_save_connection_profile()
             save_the_setup_results()
         except Exception as e:
-            print("Errors occured during the deployment process.\n Program Exits.", file=sys.stderr)
+            print(
+                "Errors occured during the deployment process.\n Program Exits.", file=sys.stderr)
             traceback.print_exc()
