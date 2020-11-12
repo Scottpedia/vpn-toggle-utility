@@ -3,6 +3,8 @@ import boto3
 import os
 import sys
 import traceback
+import string
+import random
 
 client = boto3.client("ec2")
 
@@ -12,6 +14,7 @@ Otherwise, the values specified here would override the environment variables.
 '''
 CLIENT_VPN_ENDPOINT_ID = ""
 SUBNET_ID = ""
+USER_SETTINGS = {}
 HELP_SCRIPT = '''
 Usage: ./client-vpn-manager [command] -f [the_config_file]
 The python script to deploy and manage the vpn service based on AWS Client VPN Endpoints.
@@ -32,7 +35,10 @@ NOTE: PLEASE HAVE YOUR AWS CLI SETUP WITH YOUR AWS ACCOUNT BEFORE YOU RUN THIS S
     You can use the optional -f flag to specify the file which contains the profile of a specific VPN deployment.
     Thus you can have multiple deployments active at the same time, and manage each of them with its profile.
     If the file is not speficied, the program will automatically look for one under the current working directory.
+    If multiple profiles are found under the CWD, should the most recent one be used.
 '''
+
+# *** THE MANAGEMENT CODE SECTION STARTS ***
 
 
 def get_association_state():
@@ -147,11 +153,136 @@ def manage():
         raise Exception(
             f"No such command as \"{commandInput}\" is available. Please check you input and try again.\n{HELP_SCRIPT}")
 
+# *** THE MANAGEMENT CODE SECTION ENDS ***
+# *** THE DEPLOYMENT CODE SECTION STARTS ***
+
+
+def get_user_settings():
+    global USER_SETTINGS
+    USER_SETTINGS = {
+        'friendlyName': '',
+        'isSplitTunneled': False,
+        'region': ''
+    }
+    print("Getting user settings...")
+    friendlyName = input(
+        "Please give your new VPN Service a friendly name:\n[Default: auto-generated random characters]> ")
+    if friendlyName == '':
+        print("Empty string detected! Your VPN friendly name is now:")
+        friendlyName = ''.join(random.SystemRandom().choice(
+            string.ascii_letters + string.digits) for _ in range(10))
+        print(friendlyName)
+    else:
+        print("Your current VPN friendly name is:\n{}".format(friendlyName))
+    USER_SETTINGS['friendlyName'] = friendlyName
+
+    isSplitTunneled = input(
+        "Do you want to enable split tunnel for your VPN?\n[Default: Nn] <Yy or Nn> ").capitalize()
+    while True:
+        if isSplitTunneled == 'Y':
+            USER_SETTINGS['isSplitTunneled'] = True
+            print("The VPN will be split-tunnel enabled.")
+            break
+        elif isSplitTunneled == 'N':
+            USER_SETTINGS['isSplitTunneled'] = False
+            print("The VPN will be split-tunnel disabled.")
+            break
+        elif isSplitTunneled == '':
+            USER_SETTINGS['isSplitTunneled'] = False
+            print("The VPN will be split-tunnel disabled as default.")
+            break
+        else:
+            print("Unrecognized input, please try again!")
+            isSplitTunneled = input(
+                "Do you want to enable split tunnel for your VPN?\n[Default: Nn] <Yy or Nn> ").capitalize()
+
+    print("The following AWS regions support Client VPN Endpoint:")
+    availableRegions = '''
+    1. US East (N. Virginia)
+    2. US East (Ohio)
+    3. US West (N. California)
+    4. US West (Oregon)
+    5. Asia Pacific (Mumbai)
+    6. Asia Pacific (Seoul)
+    7. Aisa Pacific (Singapore)
+    8. Aisa Pacific (Sydney)
+    9. Asia Pacific (Tokyo)
+    10. Canada (Central)
+    11. Europe (Frankfurt)
+    12. Europe (Ireland)
+    13. Europe (London)
+    14. Europe (Stockholm)
+    '''
+    regionsMapping = [
+        "",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "ap-south-1",
+        "ap-northeast-2",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-northeast-1",
+        "ca-central-1",
+        "eu-central-1",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-north-1"
+    ]
+    print(availableRegions)
+    while True:
+        regionNumber = input(
+            "Please select one from the list above. Enter the number only:\n[no Default] <1-14> ")
+        try:
+            regionNumberInteger = int(regionNumber)
+            if regionNumberInteger <= 14 and regionNumberInteger >= 1:
+                USER_SETTINGS['region'] = regionsMapping[regionNumberInteger]
+            else:
+                raise Exception(
+                    "Value ({}) not found. Please re-enter your region number.".format(regionNumber))
+        except Exception as e:
+            print(e)
+        else:
+            print("Your choice is {}".format(USER_SETTINGS['region']))
+            break
+
+    print("Please review your settings:\n {}".format(USER_SETTINGS))
+    if input("Please press ENTER to proceed, any other key to abort.\n> ").capitalize() != "":
+        print("Abort.")
+        sys.exit(1)
+
+
+def generate_credentials():
+    # This function first clones https://github.com/openvpn/easy-rsa.git and generates certificates for both server and clients.
+    # And saves it under the current directory.
+    commandsToRun = [
+        'cd '
+        'git clone https://github.com/openvpn/easy-rsa.git',
+        'cd easy-rsa/easyrsa3',
+        './easyrsa init-pki',
+        './easyrsa build-ca nopass',
+        './easyrsa build-server-full server nopass',
+        './easyrsa build-client-full client1.domain.tld nopass'
+    ]
+
+# def download_cloudformation_template():
+
+# def deploy_cloudformation_template():
+
+# def download_connection_profile():
+
+# def modify_and_save_connection_profile():
+
+# def save_the_setup_results():
+
+
+# *** THE DEPLOYMENT CODE SECTION ENDS ***
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:  # To see if the command is present.
         try:
-            get_configuration()
+            # get_configuration()
             manage()
         except Exception as e:
             print("Errors occured.", file=sys.stderr)
@@ -163,16 +294,16 @@ if __name__ == "__main__":
         # - the friendly name of this vpn service. (Default: timestampt/UUID)
         # - if the vpn service should be split-tunnelled. (Default: non-split-tunnel)
         # The user will be prompted to speficy these parameters. The job is done within the following function:
-        get_user_setting()
+        get_user_settings()
         try:
             generate_credentials()
-            download_cloudformation_template()
+            # download_cloudformation_template()
             # save the aws-generated private keys at the same time.
-            deploy_cloudformation_template()
-            download_connection_profile()
-            # Insert the generated credential into the .ovpn file.
-            modify_and_save_connection_profile()
-            save_the_setup_results()
+            # deploy_cloudformation_template()
+            # download_connection_profile()
+            # # Insert the generated credential into the .ovpn file.
+            # modify_and_save_connection_profile()
+            # save_the_setup_results()
         except Exception as e:
             print(
                 "Errors occured during the deployment process.\n Program Exits.", file=sys.stderr)
