@@ -20,11 +20,13 @@ Otherwise, the values specified here would override the environment variables.
 '''
 CLOUDFORMATION_STACK_ID = ""
 CLIENT_VPN_ENDPOINT_ID = ""
-SERVER_CERTIFICATE_ARN = ""
-CLIENT_CERTIFICATE_ARN = ""
+SERVER_CERTIFICATE_ARN = "arn:aws:acm:us-west-1:087896513676:certificate/f14291fe-d2ce-4049-9410-858e0ea0005f"
+CLIENT_CERTIFICATE_ARN = "arn:aws:acm:us-west-1:087896513676:certificate/043a1698-250e-47d9-90b6-5bb4bbcd7bd2"
 SUBNET_ID = ""
 USER_SETTINGS = {}
 TEMPLATE_CONTENT = ''
+CLIENT_CERT = ''
+CLIENT_KEY = ''
 HELP_SCRIPT = '''
 Usage: ./client-vpn-manager [command] -f [the_config_file]
 The python script to deploy and manage the vpn service based on AWS Client VPN Endpoints.
@@ -268,6 +270,8 @@ def generate_credentials():
     # This function first clones https://github.com/openvpn/easy-rsa.git and generates certificates for both server and clients.
     # And saves it under the current directory.
     # After that, it uploads the credentials to ACM.
+    global CLIENT_CERT
+    global CLIENT_KEY
     print("Generating credentials...")
     input("In the process, you will be prompted to enter the DN for your CA. You can just leave it blank and press enter.\nPlease type enter to confirm > ")
     commandsToRun = [
@@ -284,9 +288,9 @@ def generate_credentials():
         'mkdir {}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
         'cp pki/ca.crt ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
         'cp pki/issued/server-{}.crt ./{}.ovpnsetup'.format(
-            USER_SETTINGS['friendlyName'],USER_SETTINGS['friendlyName']),
+            USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'cp pki/private/server-{}.key ./{}.ovpnsetup'.format(
-            USER_SETTINGS['friendlyName'],USER_SETTINGS['friendlyName']),
+            USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'cp pki/issued/{}.domain.tld.crt ./{}.ovpnsetup'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'cp pki/private/{}.domain.tld.key ./{}.ovpnsetup'.format(
@@ -378,6 +382,10 @@ def deploy_cloudformation_template():
             {
                 'ParameterKey': 'isSplitTunnelled',
                 'ParameterValue': str(USER_SETTINGS['isSplitTunneled']).lower()
+            },
+            {
+                'ParameterKey': 'FriendlyName',
+                'ParameterValue': USER_SETTINGS['FriendlyName']
             }
         ],
         TimeoutInMinutes=15,
@@ -399,7 +407,7 @@ def deploy_cloudformation_template():
         if response["Stacks"][0]['StackStatus'] == 'CREATE_COMPLETE':
             print("Stack is successfully created!")
             break
-        elif response["Stacks"][0]['StackStatus'] == 'CREATE_FAILED':
+        elif response["Stacks"][0]['StackStatus'] == ('CREATE_FAILED' or 'ROLLBACK_IN_PROGRESS'):
             print("The stack deployment failed.")
             raise Exception("The stack deployment failed.")
         elif response["Stacks"][0]['StackStatus'] == 'CREATE_IN_PROGRESS':
@@ -410,12 +418,46 @@ def deploy_cloudformation_template():
         raise Exception("Deployment timed out.")
 
 
-    # def download_connection_profile():
+def download_connection_profile():
+    print('Exporting the connection profile...')
+    connConfig = client_ec2.export_client_vpn_client_configuration(
+        ClientVpnEndpointId=CLIENT_VPN_ENDPOINT_ID
+    )
+    print('Done.\n')
 
-    # def modify_and_save_connection_profile():
+    print('Inserting client-side credentials...')
+    conn_fragments = connConfig.split('\n')
 
-    # def save_the_setup_results():
+    conn_fragments[3] = 'remote ' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits)
+                                            for _ in range(20)).lower() + '.' + conn_fragments[3].split(' ')[1] + ' 443'
 
+    conn_fragments.insert(-2, '<key>')
+    conn_fragments.insert(-2, CLIENT_KEY.split('\n'))
+    conn_fragments.insert(-2, ['</key>', ''])
+
+    conn_fragments.insert(-2, '<cert>')
+    conn_fragments.insert(-2, CLIENT_CERT.split('\n'))
+    conn_fragments.insert(-2, ['</cert>', ''])
+
+    ovpnConfig = '\n'.join(conn_fragments)
+
+    ovpnFile = open(
+        f"{USER_SETTINGS['region']}-{USER_SETTINGS['friendlyName']}.ovpn", "w+")
+    ovpnFile.write(ovpnConfig)
+    ovpnFile.close()
+    print('Done.\n')
+
+
+# In the following function, we save the setup result as a file under the CWD for later use, 
+# that is, to identify the existing VPN endpoint that the user wants to manage.
+# Here is the list of attributes one profile has:
+# - Region
+# - Client VPN Endpoint ID
+# - Client VPN Subnet ID
+# - Date of Creation
+# - Friendly Name of the Deployment
+# These data should be stored in Json format.
+def save_the_setup_results():
 
     # *** THE DEPLOYMENT CODE SECTION ENDS ***
 if __name__ == "__main__":
@@ -443,13 +485,12 @@ if __name__ == "__main__":
                 "acm", region_name=USER_SETTINGS['region'])
             client_cf = boto3.client(
                 "cloudformation", region_name=USER_SETTINGS['region'])
-            generate_credentials()
+            # generate_credentials()
             download_cloudformation_template()
             # save the aws-generated private keys at the same time.
             deploy_cloudformation_template()
-            # download_connection_profile()
+            download_connection_profile()
             # # Insert the generated credential into the .ovpn file.
-            # modify_and_save_connection_profile()
             # save_the_setup_results()
         except Exception as e:
             print(

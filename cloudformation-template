@@ -404,6 +404,25 @@
         "TransportProtocol": "udp",
         "VpcId": {
           "Ref": "EC2VPC4E833"
+        },
+        "TagSpecification": {
+          "ResourceType": "client-vpn-endpoint",
+          "Tags": [
+            {
+              "Key": "name",
+              "Value": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "ovpn-deployment",
+                    {
+                      "Ref": "FriendlyName"
+                    }
+                  ]
+                ]
+              }
+            }
+          ]
         }
       },
       "Metadata": {
@@ -452,6 +471,10 @@
       ],
       "Default": "false",
       "Description": "If VPN endpoint enables split tunneling. Select \"false\" if you don't know what it is."
+    },
+    "FriendlyName": {
+      "Type": "String",
+      "Description": "The friendly name you should assign to your deployment."
     }
   },
   "Outputs": {
