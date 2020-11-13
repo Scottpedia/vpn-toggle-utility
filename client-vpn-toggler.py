@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+from re import template
+from sys import stdout
 import boto3
 import sys
 import traceback
 import string
 import random
 import subprocess
+from pathlib import Path
 
 client_ec2 = None
 client_acm = None
@@ -18,6 +21,7 @@ SERVER_CERTIFICATE_ARN = ""
 CLIENT_CERTIFICATE_ARN = ""
 SUBNET_ID = ""
 USER_SETTINGS = {}
+TEMPLATE_CONTENT = ''
 HELP_SCRIPT = '''
 Usage: ./client-vpn-manager [command] -f [the_config_file]
 The python script to deploy and manage the vpn service based on AWS Client VPN Endpoints.
@@ -271,13 +275,15 @@ def generate_credentials():
         '.easy-rsa-{}/easyrsa3/easyrsa build-ca nopass'.format(
             USER_SETTINGS['friendlyName']),
         '.easy-rsa-{}/easyrsa3/easyrsa build-server-full server-{} nopass'.format(
-            USER_SETTINGS['friendlyName'],USER_SETTINGS['friendlyName']),
+            USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         '.easy-rsa-{}/easyrsa3/easyrsa build-client-full {}.domain.tld nopass'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'mkdir {}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
         'cp pki/ca.crt ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/issued/server.crt ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/private/server.key ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
+        'cp pki/issued/server.crt ./{}.ovpnsetup'.format(
+            USER_SETTINGS['friendlyName']),
+        'cp pki/private/server.key ./{}.ovpnsetup'.format(
+            USER_SETTINGS['friendlyName']),
         'cp pki/issued/{}.domain.tld.crt ./{}.ovpnsetup'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'cp pki/private/{}.domain.tld.key ./{}.ovpnsetup'.format(
@@ -332,7 +338,20 @@ def generate_credentials():
     )['CertificateArn']
     print("Done.\n")
 
-# def download_cloudformation_template():
+
+# This function downloads the cloudformation template if one is not found under the CWD.
+def download_cloudformation_template():
+    cfTemplate = Path('cloudformation-template')
+    for count in range(3):
+        if cfTemplate.exists():
+            TEMPLATE_CONTENT = cfTemplate.open('r').read()
+            break
+        else:
+            subprocess.run("wget \'https://raw.githubusercontent.com/Scottpedia/vpn-toggle-utility/setup-script/cloudformation-template\' -O cloudformation-template".split(
+                ' '), check=True, stdout=sys.stdout)
+    else:
+        raise Exception("Failed to find and download the cloudformation template.")
+
 
 # def deploy_cloudformation_template():
 
@@ -341,7 +360,6 @@ def generate_credentials():
 # def modify_and_save_connection_profile():
 
 # def save_the_setup_results():
-
 
 # *** THE DEPLOYMENT CODE SECTION ENDS ***
 if __name__ == "__main__":
