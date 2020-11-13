@@ -14,6 +14,8 @@ So please leave these values below blank if you want to specify the ids with sys
 Otherwise, the values specified here would override the environment variables.
 '''
 CLIENT_VPN_ENDPOINT_ID = ""
+SERVER_CERTIFICATE_ARN = ""
+CLIENT_CERTIFICATE_ARN = ""
 SUBNET_ID = ""
 USER_SETTINGS = {}
 HELP_SCRIPT = '''
@@ -268,8 +270,8 @@ def generate_credentials():
             USER_SETTINGS['friendlyName']),
         '.easy-rsa-{}/easyrsa3/easyrsa build-ca nopass'.format(
             USER_SETTINGS['friendlyName']),
-        '.easy-rsa-{}/easyrsa3/easyrsa build-server-full server nopass'.format(
-            USER_SETTINGS['friendlyName']),
+        '.easy-rsa-{}/easyrsa3/easyrsa build-server-full server-{} nopass'.format(
+            USER_SETTINGS['friendlyName'],USER_SETTINGS['friendlyName']),
         '.easy-rsa-{}/easyrsa3/easyrsa build-client-full {}.domain.tld nopass'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'mkdir {}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
@@ -305,7 +307,7 @@ def generate_credentials():
     # Upload the certificates.
     # Import Server Certificate
     print("Uploading the certificates...")
-    client_acm.import_certificate(
+    SERVER_CERTIFICATE_ARN = client_acm.import_certificate(
         Certificate=SERVER_CERT,
         PrivateKey=SERVER_KEY,
         CertificateChain=CA_CERT,
@@ -315,9 +317,9 @@ def generate_credentials():
                 "Value": USER_SETTINGS['friendlyName']
             }
         ]
-    )
+    )['CertificateArn']
     # Import Client Certificate
-    client_acm.import_certificate(
+    CLIENT_CERTIFICATE_ARN = client_acm.import_certificate(
         Certificate=CLIENT_CERT,
         PrivateKey=CLIENT_KEY,
         CertificateChain=CA_CERT,
@@ -327,7 +329,7 @@ def generate_credentials():
                 "Value": USER_SETTINGS['friendlyName']
             }
         ]
-    )
+    )['CertificateArn']
     print("Done.\n")
 
 # def download_cloudformation_template():

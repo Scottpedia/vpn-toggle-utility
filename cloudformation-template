@@ -458,5 +458,15 @@
             "Default": "false",
             "Description": "If VPN endpoint enables split tunneling. Select \"false\" if you don't know what it is."
         }
+    },
+    "Outputs": {
+        "ClientVPNEndpointId": {
+            "Value": "EC2CVE11MMM",
+            "Description": "The Client VPN Endpoint ID"
+        },
+        "SubnetId": {
+            "Value": "EC2S2DKY4",
+            "Description": "The Subnet Id"
+        }
     }
 }
