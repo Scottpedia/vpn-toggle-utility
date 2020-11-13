@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 from re import template
 from sys import stdout
 import boto3
@@ -11,11 +12,13 @@ from pathlib import Path
 
 client_ec2 = None
 client_acm = None
+client_cf = None
 
 '''
 So please leave these values below blank if you want to specify the ids with system environment variables.
 Otherwise, the values specified here would override the environment variables.
 '''
+CLOUDFORMATION_STACK_ID = ""
 CLIENT_VPN_ENDPOINT_ID = ""
 SERVER_CERTIFICATE_ARN = ""
 CLIENT_CERTIFICATE_ARN = ""
@@ -280,10 +283,10 @@ def generate_credentials():
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'mkdir {}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
         'cp pki/ca.crt ./{}.ovpnsetup'.format(USER_SETTINGS['friendlyName']),
-        'cp pki/issued/server.crt ./{}.ovpnsetup'.format(
-            USER_SETTINGS['friendlyName']),
-        'cp pki/private/server.key ./{}.ovpnsetup'.format(
-            USER_SETTINGS['friendlyName']),
+        'cp pki/issued/server-{}.crt ./{}.ovpnsetup'.format(
+            USER_SETTINGS['friendlyName'],USER_SETTINGS['friendlyName']),
+        'cp pki/private/server-{}.key ./{}.ovpnsetup'.format(
+            USER_SETTINGS['friendlyName'],USER_SETTINGS['friendlyName']),
         'cp pki/issued/{}.domain.tld.crt ./{}.ovpnsetup'.format(
             USER_SETTINGS['friendlyName'], USER_SETTINGS['friendlyName']),
         'cp pki/private/{}.domain.tld.key ./{}.ovpnsetup'.format(
@@ -299,20 +302,21 @@ def generate_credentials():
     # pre-load the certificates into the memory.
     print("Retrieving the certificates...")
     CA_CERT = open(
-        f"./{USER_SETTINGS['friendlyName']}/ca.crt", "r").read().encode('UTF-8')
+        f"./{USER_SETTINGS['friendlyName']}.ovpnsetup/ca.crt", "r").read().encode('UTF-8')
     SERVER_CERT = open(
-        f"./{USER_SETTINGS['friendlyName']}/server.crt", "r").read().encode('UTF-8')
+        f"./{USER_SETTINGS['friendlyName']}.ovpnsetup/server-{USER_SETTINGS['friendlyName']}.crt", "r").read().encode('UTF-8')
     SERVER_KEY = open(
-        f"./{USER_SETTINGS['friendlyName']}/server.key", "r").read().encode('UTF-8')
+        f"./{USER_SETTINGS['friendlyName']}.ovpnsetup/server-{USER_SETTINGS['friendlyName']}.key", "r").read().encode('UTF-8')
     CLIENT_CERT = open(
-        f"./{USER_SETTINGS['friendlyName']}/{USER_SETTINGS['friendlyName']}.domain.tld.crt", "r").read().encode('UTF-8')
+        f"./{USER_SETTINGS['friendlyName']}.ovpnsetup/{USER_SETTINGS['friendlyName']}.domain.tld.crt", "r").read().encode('UTF-8')
     CLIENT_KEY = open(
-        f"./{USER_SETTINGS['friendlyName']}/{USER_SETTINGS['friendlyName']}.domain.tld.key", "r").read().encode('UTF-8')
+        f"./{USER_SETTINGS['friendlyName']}.ovpnsetup/{USER_SETTINGS['friendlyName']}.domain.tld.key", "r").read().encode('UTF-8')
     print("Done.\n")
 
     # Upload the certificates.
     # Import Server Certificate
     print("Uploading the certificates...")
+    global SERVER_CERTIFICATE_ARN
     SERVER_CERTIFICATE_ARN = client_acm.import_certificate(
         Certificate=SERVER_CERT,
         PrivateKey=SERVER_KEY,
@@ -325,6 +329,7 @@ def generate_credentials():
         ]
     )['CertificateArn']
     # Import Client Certificate
+    global CLIENT_CERTIFICATE_ARN
     CLIENT_CERTIFICATE_ARN = client_acm.import_certificate(
         Certificate=CLIENT_CERT,
         PrivateKey=CLIENT_KEY,
@@ -342,6 +347,7 @@ def generate_credentials():
 # This function downloads the cloudformation template if one is not found under the CWD.
 def download_cloudformation_template():
     cfTemplate = Path('cloudformation-template')
+    global TEMPLATE_CONTENT
     for count in range(3):
         if cfTemplate.exists():
             TEMPLATE_CONTENT = cfTemplate.open('r').read()
@@ -350,18 +356,68 @@ def download_cloudformation_template():
             subprocess.run("wget \'https://raw.githubusercontent.com/Scottpedia/vpn-toggle-utility/setup-script/cloudformation-template\' -O cloudformation-template".split(
                 ' '), check=True, stdout=sys.stdout)
     else:
-        raise Exception("Failed to find and download the cloudformation template.")
+        raise Exception(
+            "Failed to find and download the cloudformation template.")
 
 
-# def deploy_cloudformation_template():
+def deploy_cloudformation_template():
+    print("Now we start to deploy the actual thing on AWS.")
+    print("Deploying...")
+    response = client_cf.create_stack(
+        StackName='ovpn-{}'.format(USER_SETTINGS['friendlyName']),
+        TemplateBody=TEMPLATE_CONTENT,
+        Parameters=[
+            {
+                'ParameterKey': 'ClientCertificateArn',
+                'ParameterValue': CLIENT_CERTIFICATE_ARN
+            },
+            {
+                'ParameterKey': 'ServerCertificateArn',
+                'ParameterValue': SERVER_CERTIFICATE_ARN
+            },
+            {
+                'ParameterKey': 'isSplitTunnelled',
+                'ParameterValue': str(USER_SETTINGS['isSplitTunneled']).lower()
+            }
+        ],
+        TimeoutInMinutes=15,
+        Tags=[
+            {
+                "Key": "deploymentFriendlyName",
+                "Value": USER_SETTINGS['friendlyName']
+            }
+        ]
+    )
+    global CLOUDFORMATION_STACK_ID
+    CLOUDFORMATION_STACK_ID = response['StackId']
+    print("Deployment initiated. The program will refresh every 3 seconds to check the progress of deployment. The timeout is 5 mimutes.")
+    for i in range(100):
+        time.sleep(3)
+        response = client_cf.describe_stacks(
+            StackName='ovpn-{}'.format(USER_SETTINGS['friendlyName'])
+        )
+        if response["Stacks"][0]['StackStatus'] == 'CREATE_COMPLETE':
+            print("Stack is successfully created!")
+            break
+        elif response["Stacks"][0]['StackStatus'] == 'CREATE_FAILED':
+            print("The stack deployment failed.")
+            raise Exception("The stack deployment failed.")
+        elif response["Stacks"][0]['StackStatus'] == 'CREATE_IN_PROGRESS':
+            pass
+        else:
+            raise Exception("Unexpected stack status detected.")
+    else:
+        raise Exception("Deployment timed out.")
 
-# def download_connection_profile():
 
-# def modify_and_save_connection_profile():
+    # def download_connection_profile():
 
-# def save_the_setup_results():
+    # def modify_and_save_connection_profile():
 
-# *** THE DEPLOYMENT CODE SECTION ENDS ***
+    # def save_the_setup_results():
+
+
+    # *** THE DEPLOYMENT CODE SECTION ENDS ***
 if __name__ == "__main__":
     if len(sys.argv) > 1:  # To see if the command is present.
         try:
@@ -385,10 +441,12 @@ if __name__ == "__main__":
                 "ec2", region_name=USER_SETTINGS['region'])
             client_acm = boto3.client(
                 "acm", region_name=USER_SETTINGS['region'])
+            client_cf = boto3.client(
+                "cloudformation", region_name=USER_SETTINGS['region'])
             generate_credentials()
-            # download_cloudformation_template()
+            download_cloudformation_template()
             # save the aws-generated private keys at the same time.
-            # deploy_cloudformation_template()
+            deploy_cloudformation_template()
             # download_connection_profile()
             # # Insert the generated credential into the .ovpn file.
             # modify_and_save_connection_profile()

@@ -404,9 +404,7 @@
                 "SplitTunnel": {
                     "Ref": "isSplitTunnelled"
                 },
-                "TransportProtocol": {
-                    "Ref": "udp"
-                },
+                "TransportProtocol": "udp",
                 "VpcId": {
                     "Ref": "EC2VPC4E833"
                 }
