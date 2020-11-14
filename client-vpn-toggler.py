@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import time
-from re import template
 from sys import stdout
 import boto3
 import sys
