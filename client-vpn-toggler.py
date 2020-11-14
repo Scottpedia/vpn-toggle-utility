@@ -9,6 +9,7 @@ import string
 import random
 import subprocess
 from pathlib import Path
+from json import dumps
 
 client_ec2 = None
 client_acm = None
@@ -299,7 +300,7 @@ def generate_credentials():
         'rm -rf pki'
     ]
     for command in commandsToRun:
-        sp = subprocess.run(command.split(' '), stdout=sys.stdout, check=True)
+        subprocess.run(command.split(' '), stdout=sys.stdout, check=True)
     else:
         print("Done.\n")
 
@@ -316,6 +317,9 @@ def generate_credentials():
     CLIENT_KEY = open(
         f"./{USER_SETTINGS['friendlyName']}.ovpnsetup/{USER_SETTINGS['friendlyName']}.domain.tld.key", "r").read().encode('UTF-8')
     print("Done.\n")
+
+    # Delete the temporary configuration folder. (This process is unnecessary and complicated. It should be later simplified.)
+    subprocess.run(f"rm -rf {USER_SETTINGS['friendlyName']}-{}.ovpnsetup".split(' '), check=True)
 
     # Upload the certificates.
     # Import Server Certificate
@@ -385,7 +389,7 @@ def deploy_cloudformation_template():
             },
             {
                 'ParameterKey': 'FriendlyName',
-                'ParameterValue': USER_SETTINGS['FriendlyName']
+                'ParameterValue': USER_SETTINGS['friendlyName']
             }
         ],
         TimeoutInMinutes=15,
@@ -397,6 +401,8 @@ def deploy_cloudformation_template():
         ]
     )
     global CLOUDFORMATION_STACK_ID
+    global CLIENT_VPN_ENDPOINT_ID
+    global SUBNET_ID
     CLOUDFORMATION_STACK_ID = response['StackId']
     print("Deployment initiated. The program will refresh every 3 seconds to check the progress of deployment. The timeout is 5 mimutes.")
     for i in range(100):
@@ -406,6 +412,10 @@ def deploy_cloudformation_template():
         )
         if response["Stacks"][0]['StackStatus'] == 'CREATE_COMPLETE':
             print("Stack is successfully created!")
+            outputs = response["Stacks"][0]['Outputs']
+            outputs.sort(key=lambda x : x['OutputKey'])
+            CLIENT_VPN_ENDPOINT_ID = outputs[0]['OutputValue']
+            SUBNET_ID = outputs[1]['OutputValue']
             break
         elif response["Stacks"][0]['StackStatus'] == ('CREATE_FAILED' or 'ROLLBACK_IN_PROGRESS'):
             print("The stack deployment failed.")
@@ -426,18 +436,21 @@ def download_connection_profile():
     print('Done.\n')
 
     print('Inserting client-side credentials...')
-    conn_fragments = connConfig.split('\n')
+    print('Processing...')
+    conn_fragments = connConfig['ClientConfiguration'].split('\n')
 
     conn_fragments[3] = 'remote ' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits)
                                             for _ in range(20)).lower() + '.' + conn_fragments[3].split(' ')[1] + ' 443'
 
     conn_fragments.insert(-2, '<key>')
-    conn_fragments.insert(-2, CLIENT_KEY.split('\n'))
-    conn_fragments.insert(-2, ['</key>', ''])
+    for _i in CLIENT_KEY.decode('UTF-8').split('\n'):
+        conn_fragments.insert(-2, _i)
+    conn_fragments.insert(-2, '</key>')
 
     conn_fragments.insert(-2, '<cert>')
-    conn_fragments.insert(-2, CLIENT_CERT.split('\n'))
-    conn_fragments.insert(-2, ['</cert>', ''])
+    for _i in CLIENT_CERT.decode('UTF-8').split('\n'):
+        conn_fragments.insert(-2, _i)
+    conn_fragments.insert(-2, '</cert>')
 
     ovpnConfig = '\n'.join(conn_fragments)
 
@@ -446,6 +459,7 @@ def download_connection_profile():
     ovpnFile.write(ovpnConfig)
     ovpnFile.close()
     print('Done.\n')
+    print('Your .ovpn file is: ' + f"{USER_SETTINGS['region']}-{USER_SETTINGS['friendlyName']}.ovpn")
 
 
 # In the following function, we save the setup result as a file under the CWD for later use, 
@@ -458,6 +472,23 @@ def download_connection_profile():
 # - Friendly Name of the Deployment
 # These data should be stored in Json format.
 def save_the_setup_results():
+    print("Gathering Deployment attributes...")
+    saveTime = int(time.time())
+    DATA_TO_STORE={
+        "AWS_REGION": USER_SETTINGS['region'],
+        "ENDPOINT_ID": CLIENT_VPN_ENDPOINT_ID,
+        "SUBNET_ID": SUBNET_ID,
+        "DATE_OF_CREATION": saveTime,
+        "FRIENDLY_NAME": USER_SETTINGS['friendlyName']
+    }
+    print('Done.\n')
+    print(DATA_TO_STORE)
+    print(f"Saving the file as \'{USER_SETTINGS['friendlyName']}-{saveTime}.ovpnsetup\' ...")
+    _f = open(f"{USER_SETTINGS['friendlyName']}-{saveTime}.ovpnsetup",'w+')
+    _f.write(dumps(DATA_TO_STORE))
+    _f.close()
+    print('Done.\n')
+    
 
     # *** THE DEPLOYMENT CODE SECTION ENDS ***
 if __name__ == "__main__":
@@ -485,13 +516,13 @@ if __name__ == "__main__":
                 "acm", region_name=USER_SETTINGS['region'])
             client_cf = boto3.client(
                 "cloudformation", region_name=USER_SETTINGS['region'])
-            # generate_credentials()
-            download_cloudformation_template()
+            generate_credentials()
+            download_cloudformation_template(),
             # save the aws-generated private keys at the same time.
             deploy_cloudformation_template()
             download_connection_profile()
             # # Insert the generated credential into the .ovpn file.
-            # save_the_setup_results()
+            save_the_setup_results()
         except Exception as e:
             print(
                 "Errors occured during the deployment process.\n Program Exits.", file=sys.stderr)
