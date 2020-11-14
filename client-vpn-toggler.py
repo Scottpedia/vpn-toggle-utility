@@ -21,8 +21,8 @@ Otherwise, the values specified here would override the environment variables.
 '''
 CLOUDFORMATION_STACK_ID = ""
 CLIENT_VPN_ENDPOINT_ID = ""
-SERVER_CERTIFICATE_ARN = "arn:aws:acm:us-west-1:087896513676:certificate/f14291fe-d2ce-4049-9410-858e0ea0005f"
-CLIENT_CERTIFICATE_ARN = "arn:aws:acm:us-west-1:087896513676:certificate/043a1698-250e-47d9-90b6-5bb4bbcd7bd2"
+SERVER_CERTIFICATE_ARN = ""
+CLIENT_CERTIFICATE_ARN = ""
 SUBNET_ID = ""
 USER_SETTINGS = {}
 TEMPLATE_CONTENT = ''
