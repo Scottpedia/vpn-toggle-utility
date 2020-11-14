@@ -404,25 +404,6 @@
         "TransportProtocol": "udp",
         "VpcId": {
           "Ref": "EC2VPC4E833"
-        },
-        "TagSpecification": {
-          "ResourceType": "client-vpn-endpoint",
-          "Tags": [
-            {
-              "Key": "name",
-              "Value": {
-                "Fn::Join": [
-                  "-",
-                  [
-                    "ovpn-deployment",
-                    {
-                      "Ref": "FriendlyName"
-                    }
-                  ]
-                ]
-              }
-            }
-          ]
         }
       },
       "Metadata": {
@@ -479,11 +460,15 @@
   },
   "Outputs": {
     "ClientVPNEndpointId": {
-      "Value": "EC2CVE11MMM",
+      "Value": {
+        "Ref": "EC2CVE11MMM"
+      },
       "Description": "The Client VPN Endpoint ID"
     },
     "SubnetId": {
-      "Value": "EC2S2DKY4",
+      "Value": {
+        "Ref": "EC2S2DKY4"
+      },
       "Description": "The Subnet Id"
     }
   }
