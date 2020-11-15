@@ -1,5 +1,7 @@
 # vpn-toggle-utility
 
+> # This project has merged with the main repo [here](https://github.com/scottpedia/aws-client-vpn-setup).
+
 This branch of the repo is dedicated to a python script that deploys a ready-to-go client VPN endpoint on AWS, and also functions as a CLI to manage the endpoint. This script will be soon merged into the project [main repository](https://github.com/Scottpedia/aws-client-vpn-setup).
 
 ----------------------------------------------
